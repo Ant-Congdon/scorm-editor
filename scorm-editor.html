@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SCORM Content Editor</title>
+    <style>
+        body { padding: 20px; font-family: Arial, sans-serif; }
+        textarea { width: 100%; min-height: 200px; margin: 10px 0; }
+        button { padding: 10px; margin: 5px; }
+        #editorArea { display: none; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h2>SCORM Content Editor</h2>
+    <input type="file" id="fileInput" accept=".html">
+    <div id="editorArea">
+        <button onclick="decodeContent()">Decode Content</button>
+        <button onclick="encodeContent()">Encode Content</button>
+        <button onclick="downloadFile()">Save Changes</button>
+        <br>
+        <textarea id="encodedData" placeholder="Paste encoded content here"></textarea>
+        <br>
+        <textarea id="decodedData" placeholder="Decoded content will appear here"></textarea>
+    </div>
+
+    <script>
+        let originalFileContent = '';
+
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            let file = e.target.files[0];
+            let reader = new FileReader();
+            reader.onload = function(e) {
+                originalFileContent = e.target.result;
+                let match = originalFileContent.match(/window\.courseData = "([^"]+)"/);
+                if (match) {
+                    document.getElementById('encodedData').value = match[1];
+                    document.getElementById('editorArea').style.display = 'block';
+                } else {
+                    alert('Could not find course data in file');
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        function decodeContent() {
+            try {
+                let encoded = document.getElementById('encodedData').value;
+                let decoded = atob(encoded);
+                let json = JSON.parse(decoded);
+                document.getElementById('decodedData').value = JSON.stringify(json, null, 2);
+            } catch (e) {
+                alert('Error decoding content: ' + e.message);
+            }
+        }
+
+        function encodeContent() {
+            try {
+                let decoded = document.getElementById('decodedData').value;
+                let json = JSON.parse(decoded);
+                let encoded = btoa(JSON.stringify(json));
+                document.getElementById('encodedData').value = encoded;
+            } catch (e) {
+                alert('Error encoding content: ' + e.message);
+            }
+        }
+
+        function downloadFile() {
+            try {
+                let encoded = document.getElementById('encodedData').value;
+                // Replace the courseData in the original file content
+                let newContent = originalFileContent.replace(
+                    /(window\.courseData = ")[^"]+(")/,
+                    '$1' + encoded + '$2'
+                );
+
+                let blob = new Blob([newContent], {type: 'text/html'});
+                let url = URL.createObjectURL(blob);
+                let a = document.createElement('a');
+                a.href = url;
+                a.download = 'index.html';
+                a.click();
+                URL.revokeObjectURL(url);
+            } catch (e) {
+                alert('Error saving file: ' + e.message);
+            }
+        }
+    </script>
+</body>
+</html>
